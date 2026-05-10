@@ -4,12 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>🌸 Ailo Vivi Note</title>
-  <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#FF69B4">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="apple-mobile-web-app-title" content="ViviNote">
-  <link rel="apple-touch-icon" href="icons/icon-192.png">
   <link rel="stylesheet" href="style.css">
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Pacifico&display=swap" rel="stylesheet">
 </head>
@@ -142,14 +136,6 @@
         <div class="set-card">
           <h4 class="set-title">💕 Tentang Aplikasi</h4>
           <p class="set-desc">🌸 <strong>Ailo Vivi Note</strong> v1.0<br>Aplikasi catatan pribadi AI dengan tema lucu 🎀<br>AI: Groq · Mistral · Cohere (BYOK)</p>
-        </div>
-
-        <!-- Backup & Restore -->
-        <div class="set-card">
-          <h4 class="set-title">💾 Backup & Restore</h4>
-          <p class="set-desc">Simpan data kamu sebagai file JSON, atau pulihkan dari backup sebelumnya 🔒</p>
-          <button class="set-action-btn" onclick="exportData()">📦 Export Backup (.json)</button>
-          <button class="set-action-btn" onclick="importData()">📂 Import dari Backup</button>
         </div>
 
         <!-- Danger zone -->
@@ -346,7 +332,22 @@
         </div>
       </div>
 
-
+      <!-- ── SETTINGS PAGE (removed, now sidebar) ── -->
+      <!-- Settings page tetap ada tapi kosong / redirect -->
+      <div id="page-settings" class="page">
+        <div class="hero-banner">
+          <div class="hero-text">
+            <h2>⚙️ Pengaturan 🌸</h2>
+            <p>Buka sidebar untuk kelola akun</p>
+          </div>
+          <div class="hero-char">🔧</div>
+        </div>
+        <div class="set-card" style="text-align:center; padding: 32px 20px;">
+          <div style="font-size:3rem; margin-bottom:12px">⚙️</div>
+          <p style="color:var(--text-soft); font-size:0.9rem; margin-bottom:16px">Pengaturan sekarang ada di sidebar!</p>
+          <button class="m-btn-s" style="max-width:200px; margin:0 auto; display:block;" onclick="openSidebar()">☰ Buka Pengaturan</button>
+        </div>
+      </div>
 
     </main>
 
@@ -524,34 +525,5 @@
   <div id="toast" class="toast hidden"></div>
 
   <script src="app.js"></script>
-
-  <!-- ═══ PWA Service Worker Registration ═══ -->
-  <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', async () => {
-        try {
-          const reg = await navigator.serviceWorker.register('./sw.js', { scope: './' });
-          console.log('✅ Service Worker terdaftar:', reg.scope);
-
-          // Cek update SW
-          reg.addEventListener('updatefound', () => {
-            const newSW = reg.installing;
-            newSW.addEventListener('statechange', () => {
-              if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
-                // Ada versi baru — beri tahu user
-                const update = confirm('🌸 Versi baru tersedia! Muat ulang sekarang?');
-                if (update) {
-                  newSW.postMessage('SKIP_WAITING');
-                  window.location.reload();
-                }
-              }
-            });
-          });
-        } catch (err) {
-          console.warn('❌ Service Worker gagal:', err);
-        }
-      });
-    }
-  </script>
 </body>
 </html>
