@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>🌸 Ailo Vivi Note</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#FF69B4">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="ViviNote">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Pacifico&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <!-- Floating Background Decorations -->
+  <div class="bg-decos" aria-hidden="true">
+    <span class="deco d1">🌸</span>
+    <span class="deco d2">💕</span>
+    <span class="deco d3">✨</span>
+    <span class="deco d4">🌷</span>
+    <span class="deco d5">🦋</span>
+    <span class="deco d6">🌼</span>
+    <span class="deco d7">⭐</span>
+    <span class="deco d8">🍓</span>
+  </div>
+
+  <!-- ═══════════ LOGIN SCREEN ═══════════ -->
+  <div id="login-screen">
+    <div class="login-card">
+      <div class="login-logo">
+        <div class="logo-blob">🌸</div>
+        <h1 class="logo-name">Ailo Vivi Note</h1>
+        <p class="logo-tagline">✨ Catatan lucu buat kamu ✨</p>
+      </div>
+
+      <div class="pin-dots" id="pin-dots">
+        <div class="pin-dot" id="d0"></div>
+        <div class="pin-dot" id="d1"></div>
+        <div class="pin-dot" id="d2"></div>
+        <div class="pin-dot" id="d3"></div>
+        <div class="pin-dot" id="d4"></div>
+        <div class="pin-dot" id="d5"></div>
+      </div>
+      <p class="pin-hint" id="pin-hint">🔑 Masukkan PIN kamu</p>
+
+      <div class="pin-pad">
+        <button class="pkey" onclick="pinPress('1')">1</button>
+        <button class="pkey" onclick="pinPress('2')">2</button>
+        <button class="pkey" onclick="pinPress('3')">3</button>
+        <button class="pkey" onclick="pinPress('4')">4</button>
+        <button class="pkey" onclick="pinPress('5')">5</button>
+        <button class="pkey" onclick="pinPress('6')">6</button>
+        <button class="pkey" onclick="pinPress('7')">7</button>
+        <button class="pkey" onclick="pinPress('8')">8</button>
+        <button class="pkey" onclick="pinPress('9')">9</button>
+        <button class="pkey ghost"></button>
+        <button class="pkey" onclick="pinPress('0')">0</button>
+        <button class="pkey del-key" onclick="pinDel()">⌫</button>
+      </div>
+
+      <button class="fp-btn" id="fp-btn" onclick="doFingerprint()">
+        <span class="fp-icon">👆</span>
+        <span>Masuk Sidik Jari</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══════════ MAIN APP ═══════════ -->
+  <div id="app" class="hidden">
+
+    <!-- Sidebar Overlay -->
+    <div id="sidebar-overlay" class="sidebar-overlay" onclick="closeSidebar()"></div>
+
+    <!-- ═══ SETTINGS SIDEBAR ═══ -->
+    <aside id="settings-sidebar" class="settings-sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-title-row">
+          <span class="sidebar-logo">🌸</span>
+          <span class="sidebar-title">Pengaturan</span>
+        </div>
+        <button class="sidebar-close" onclick="closeSidebar()">✕</button>
+      </div>
+
+      <div class="sidebar-body">
+
+        <!-- BYOK API Keys -->
+        <div class="set-card">
+          <h4 class="set-title">🔑 API Keys (BYOK)</h4>
+          <p class="set-desc">Masukkan API key kamu agar bisa pakai AI. Key disimpan lokal di browsermu saja 🔒</p>
+
+          <div class="set-item">
+            <label class="set-lbl">⚡ Groq API Key</label>
+            <div class="key-row">
+              <input type="password" id="inp-groq" class="key-inp" placeholder="gsk_...">
+              <button class="key-btn" onclick="saveApiKey('groq')">💾</button>
+            </div>
+            <small id="groq-status" class="key-status"></small>
+          </div>
+
+          <div class="set-item">
+            <label class="set-lbl">🌟 Mistral API Key</label>
+            <div class="key-row">
+              <input type="password" id="inp-mistral" class="key-inp" placeholder="...">
+              <button class="key-btn" onclick="saveApiKey('mistral')">💾</button>
+            </div>
+            <small id="mistral-status" class="key-status"></small>
+          </div>
+
+          <div class="set-item">
+            <label class="set-lbl">🔮 Cohere API Key</label>
+            <div class="key-row">
+              <input type="password" id="inp-cohere" class="key-inp" placeholder="...">
+              <button class="key-btn" onclick="saveApiKey('cohere')">💾</button>
+            </div>
+            <small id="cohere-status" class="key-status"></small>
+          </div>
+        </div>
+
+        <!-- Kategori Keuangan -->
+        <div class="set-card">
+          <h4 class="set-title">🏷️ Kategori Keuangan</h4>
+          <p class="set-desc">Kelola kategori transaksi kamu 💕</p>
+          <div id="category-list" class="category-list"></div>
+          <div class="add-cat-row">
+            <input type="text" id="inp-new-cat-emoji" class="cat-emoji-inp" placeholder="😊" maxlength="2">
+            <input type="text" id="inp-new-cat" class="cat-name-inp" placeholder="Nama kategori...">
+            <button class="cat-add-btn" onclick="addCategory()">+ Tambah</button>
+          </div>
+        </div>
+
+        <!-- Security -->
+        <div class="set-card">
+          <h4 class="set-title">🔒 Keamanan</h4>
+          <button class="set-action-btn" onclick="openModal('modal-newpin')">🔑 Ganti PIN</button>
+          <button class="set-action-btn" onclick="doRegisterFP()">👆 Daftarkan Sidik Jari</button>
+        </div>
+
+        <!-- About -->
+        <div class="set-card">
+          <h4 class="set-title">💕 Tentang Aplikasi</h4>
+          <p class="set-desc">🌸 <strong>Ailo Vivi Note</strong> v1.0<br>Aplikasi catatan pribadi AI dengan tema lucu 🎀<br>AI: Groq · Mistral · Cohere (BYOK)</p>
+        </div>
+
+        <!-- Backup & Restore -->
+        <div class="set-card">
+          <h4 class="set-title">💾 Backup & Restore</h4>
+          <p class="set-desc">Simpan data kamu sebagai file JSON, atau pulihkan dari backup sebelumnya 🔒</p>
+          <button class="set-action-btn" onclick="exportData()">📦 Export Backup (.json)</button>
+          <button class="set-action-btn" onclick="importData()">📂 Import dari Backup</button>
+        </div>
+
+        <!-- Danger zone -->
+        <div class="set-card danger-card">
+          <h4 class="set-title">⚠️ Zona Berbahaya</h4>
+          <button class="danger-btn" onclick="clearAllData()">🗑️ Hapus Semua Data</button>
+        </div>
+
+      </div>
+    </aside>
+
+    <!-- App Header -->
+    <header class="app-header">
+      <div class="hdr-left">
+        <button class="hdr-btn" onclick="openSidebar()" title="Buka Menu">☰</button>
+        <span>🌸</span>
+        <span class="hdr-title">Ailo Vivi Note</span>
+      </div>
+      <div class="hdr-right">
+        <button class="hdr-btn" id="alarm-indicator" title="Alarm Aktif" style="display:none">🔔</button>
+        <button class="hdr-btn" onclick="doLogout()">🚪</button>
+      </div>
+    </header>
+
+    <!-- Pages -->
+    <main class="pages">
+
+      <!-- ── HOME PAGE ── -->
+      <div id="page-home" class="page active">
+        <div class="hero-banner">
+          <div class="hero-text">
+            <h2 id="hero-greeting">Halo Vivi! 🌸</h2>
+            <p id="hero-date"></p>
+          </div>
+          <div class="hero-char">🌷</div>
+        </div>
+
+        <!-- Quick Stats -->
+        <div class="stats-row">
+          <div class="stat-chip">
+            <span class="s-emoji">📅</span>
+            <span class="s-val" id="stat-total">0</span>
+            <span class="s-lbl">Jadwal</span>
+          </div>
+          <div class="stat-chip">
+            <span class="s-emoji">✅</span>
+            <span class="s-val" id="stat-done">0</span>
+            <span class="s-lbl">Selesai</span>
+          </div>
+          <div class="stat-chip">
+            <span class="s-emoji">⏰</span>
+            <span class="s-val" id="stat-alarm">0</span>
+            <span class="s-lbl">Alarm</span>
+          </div>
+        </div>
+
+        <!-- Schedule List -->
+        <div class="sec">
+          <div class="sec-hdr">
+            <h3>📋 Rutinitas Harian</h3>
+            <button class="btn-add" onclick="openModal('modal-sched')">+ Tambah</button>
+          </div>
+          <div id="sched-list" class="sched-list">
+            <div class="empty-state">🌸 Belum ada jadwal. Yuk tambah!</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── PLANS PAGE ── -->
+      <div id="page-plans" class="page">
+        <div class="hero-banner">
+          <div class="hero-text">
+            <h2>📆 Rencanaku 🌈</h2>
+            <p>Atur rencana & catatan kamu!</p>
+          </div>
+          <div class="hero-char">🎯</div>
+        </div>
+
+        <!-- Calendar -->
+        <div class="cal-card">
+          <div class="cal-nav">
+            <button class="cal-arrow" onclick="calPrev()">◀</button>
+            <span class="cal-month-lbl" id="cal-lbl"></span>
+            <button class="cal-arrow" onclick="calNext()">▶</button>
+          </div>
+          <div class="cal-days-hdr">
+            <span>Min</span><span>Sen</span><span>Sel</span><span>Rab</span><span>Kam</span><span>Jum</span><span>Sab</span>
+          </div>
+          <div id="cal-grid" class="cal-grid"></div>
+        </div>
+
+        <!-- Plans for selected date -->
+        <div class="sec">
+          <div class="sec-hdr">
+            <h3>🎯 Rencana — <span id="sel-date-lbl" class="pink-text">Hari ini</span></h3>
+            <button class="btn-add" onclick="openModal('modal-plan')">+ Tambah</button>
+          </div>
+          <div id="plans-list" class="plans-list">
+            <div class="empty-state">💕 Tidak ada rencana untuk hari ini</div>
+          </div>
+        </div>
+
+        <!-- Notes -->
+        <div class="sec">
+          <div class="sec-hdr">
+            <h3>📝 Catatan Ku</h3>
+            <button class="btn-add" onclick="openModal('modal-note')">+ Tambah</button>
+          </div>
+          <div id="notes-list" class="notes-list">
+            <div class="empty-state">✏️ Belum ada catatan</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── FINANCE PAGE ── -->
+      <div id="page-finance" class="page">
+        <div class="hero-banner">
+          <div class="hero-text">
+            <h2>💰 Keuanganku 💕</h2>
+            <p>Catat pemasukan & pengeluaran</p>
+          </div>
+          <div class="hero-char">🏦</div>
+        </div>
+
+        <div class="balance-card">
+          <p class="bal-lbl">💳 Saldo Saat Ini</p>
+          <h2 class="bal-amount" id="bal-total">Rp 0</h2>
+          <div class="bal-row">
+            <div class="bal-item inc">
+              <div class="bal-icon">💚</div>
+              <div>
+                <small>Pemasukan</small>
+                <strong id="bal-in">Rp 0</strong>
+              </div>
+            </div>
+            <div class="bal-divider"></div>
+            <div class="bal-item exp">
+              <div class="bal-icon">❤️</div>
+              <div>
+                <small>Pengeluaran</small>
+                <strong id="bal-out">Rp 0</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="sec">
+          <div class="sec-hdr">
+            <h3>📊 Riwayat Transaksi</h3>
+            <button class="btn-add" onclick="openModal('modal-trans')">+ Tambah</button>
+          </div>
+          <div class="filter-row">
+            <button class="ftab active" onclick="finFilter('all',this)">🌸 Semua</button>
+            <button class="ftab" onclick="finFilter('income',this)">💚 Masuk</button>
+            <button class="ftab" onclick="finFilter('expense',this)">❤️ Keluar</button>
+          </div>
+          <div id="fin-list" class="fin-list">
+            <div class="empty-state">💰 Belum ada transaksi</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── AI CHAT PAGE ── -->
+      <div id="page-ai" class="page">
+        <div class="hero-banner">
+          <div class="hero-text">
+            <h2>🤖 AI Asisten 💕</h2>
+            <p>Tanya apa saja ke AI!</p>
+          </div>
+          <div class="hero-char">✨</div>
+        </div>
+
+        <div class="ai-provider-tabs">
+          <button class="ai-tab active" data-prov="groq" onclick="pickProvider('groq',this)">⚡ Groq</button>
+          <button class="ai-tab" data-prov="mistral" onclick="pickProvider('mistral',this)">🌟 Mistral</button>
+          <button class="ai-tab" data-prov="cohere" onclick="pickProvider('cohere',this)">🔮 Cohere</button>
+        </div>
+
+        <div id="ai-no-key" class="ai-no-key hidden">
+          ⚠️ Belum ada API key untuk provider ini!
+          <button onclick="openSidebar()">⚙️ Ke Pengaturan</button>
+        </div>
+
+        <div id="chat-box" class="chat-box">
+          <div class="chat-msg bot">
+            <div class="chat-ava">🌸</div>
+            <div class="chat-bub">Hai Vivi! 🥰 Aku siap membantu kamu! Tanya apa saja ya~ 💕</div>
+          </div>
+        </div>
+
+        <div class="chat-bar">
+          <input type="text" id="chat-in" class="chat-in" placeholder="Ketik pesan kamu... 💬" onkeydown="if(event.key==='Enter')sendMsg()">
+          <button class="chat-send" onclick="sendMsg()">🚀</button>
+        </div>
+      </div>
+
+
+
+    </main>
+
+    <!-- Bottom Nav -->
+    <nav class="bot-nav">
+      <button class="bnav" id="bn-home" onclick="navigateTo('home')">
+        <span class="bnav-ico">🏠</span>
+        <span class="bnav-lbl">Beranda</span>
+      </button>
+      <button class="bnav" id="bn-plans" onclick="navigateTo('plans')">
+        <span class="bnav-ico">📆</span>
+        <span class="bnav-lbl">Rencana</span>
+      </button>
+      <button class="bnav" id="bn-finance" onclick="navigateTo('finance')">
+        <span class="bnav-ico">💰</span>
+        <span class="bnav-lbl">Keuangan</span>
+      </button>
+      <button class="bnav" id="bn-ai" onclick="navigateTo('ai')">
+        <span class="bnav-ico">🤖</span>
+        <span class="bnav-lbl">AI Chat</span>
+      </button>
+      <button class="bnav" id="bn-settings" onclick="openSidebar()">
+        <span class="bnav-ico">⚙️</span>
+        <span class="bnav-lbl">Setelan</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- ═══════════ MODALS ═══════════ -->
+
+  <!-- Add/Edit Schedule -->
+  <div id="modal-sched" class="modal-overlay hidden" onclick="overlayClose(event,'modal-sched')">
+    <div class="modal-box">
+      <div class="modal-hdr">
+        <h3>✨ Tambah Jadwal</h3>
+        <button class="modal-close" onclick="closeModal('modal-sched')">✕</button>
+      </div>
+      <input type="text" id="s-title" class="m-inp" placeholder="Nama kegiatan...">
+      <div class="emoji-section">
+        <p class="emoji-lbl">Pilih Emoji 👇</p>
+        <div class="emoji-grid" id="emoji-grid"></div>
+        <div class="sel-emoji-show">Dipilih: <span id="sel-emoji">🌸</span></div>
+      </div>
+      <input type="time" id="s-time" class="m-inp">
+      <select id="s-repeat" class="m-inp">
+        <option value="once">🔂 Sekali saja</option>
+        <option value="daily">🔁 Setiap hari</option>
+        <option value="weekdays">💼 Hari kerja (Senin–Jumat)</option>
+        <option value="weekend">🌴 Akhir pekan</option>
+      </select>
+      <label class="m-check">
+        <input type="checkbox" id="s-alarm"> 🔔 Aktifkan alarm pengingat
+      </label>
+      <div class="modal-ftr">
+        <button class="m-btn-c" onclick="closeModal('modal-sched')">Batal</button>
+        <button class="m-btn-s" onclick="saveSched()">💾 Simpan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Plan -->
+  <div id="modal-plan" class="modal-overlay hidden" onclick="overlayClose(event,'modal-plan')">
+    <div class="modal-box">
+      <div class="modal-hdr">
+        <h3>🎯 Tambah Rencana</h3>
+        <button class="modal-close" onclick="closeModal('modal-plan')">✕</button>
+      </div>
+      <input type="text" id="p-title" class="m-inp" placeholder="Nama rencana...">
+      <textarea id="p-note" class="m-inp m-ta" placeholder="Catatan tambahan... 💕"></textarea>
+      <label class="m-lbl">📅 Tanggal</label>
+      <input type="date" id="p-date" class="m-inp">
+      <label class="m-lbl">⏰ Waktu (opsional)</label>
+      <input type="time" id="p-time" class="m-inp">
+      <label class="m-check">
+        <input type="checkbox" id="p-alarm"> 🔔 Aktifkan pengingat suara (Vivi Mode! 🎤)
+      </label>
+      <div class="modal-ftr">
+        <button class="m-btn-c" onclick="closeModal('modal-plan')">Batal</button>
+        <button class="m-btn-s" onclick="savePlan()">💾 Simpan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Note -->
+  <div id="modal-note" class="modal-overlay hidden" onclick="overlayClose(event,'modal-note')">
+    <div class="modal-box">
+      <div class="modal-hdr">
+        <h3>📝 Tambah Catatan</h3>
+        <button class="modal-close" onclick="closeModal('modal-note')">✕</button>
+      </div>
+      <input type="text" id="n-title" class="m-inp" placeholder="Judul catatan...">
+      <textarea id="n-content" class="m-inp m-ta" placeholder="Tulis catatanmu di sini... 💕" rows="5"></textarea>
+      <select id="n-color" class="m-inp">
+        <option value="pink">🌸 Pink</option>
+        <option value="yellow">🌼 Kuning</option>
+        <option value="mint">🌿 Mint</option>
+        <option value="lavender">💜 Lavender</option>
+        <option value="peach">🍑 Peach</option>
+      </select>
+      <div class="modal-ftr">
+        <button class="m-btn-c" onclick="closeModal('modal-note')">Batal</button>
+        <button class="m-btn-s" onclick="saveNote()">💾 Simpan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Transaction -->
+  <div id="modal-trans" class="modal-overlay hidden" onclick="overlayClose(event,'modal-trans')">
+    <div class="modal-box">
+      <div class="modal-hdr">
+        <h3>💸 Tambah Transaksi</h3>
+        <button class="modal-close" onclick="closeModal('modal-trans')">✕</button>
+      </div>
+      <div class="type-toggle">
+        <button class="ttype active" id="tt-inc" onclick="setType('income')">💚 Pemasukan</button>
+        <button class="ttype" id="tt-exp" onclick="setType('expense')">❤️ Pengeluaran</button>
+      </div>
+      <input type="text" id="t-desc" class="m-inp" placeholder="Keterangan...">
+      <input type="number" id="t-amount" class="m-inp" placeholder="Jumlah (Rp)">
+      <input type="date" id="t-date" class="m-inp">
+      <select id="t-cat" class="m-inp">
+        <!-- filled dynamically -->
+      </select>
+      <div class="modal-ftr">
+        <button class="m-btn-c" onclick="closeModal('modal-trans')">Batal</button>
+        <button class="m-btn-s" onclick="saveTransaction()">💾 Simpan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Change PIN -->
+  <div id="modal-newpin" class="modal-overlay hidden" onclick="overlayClose(event,'modal-newpin')">
+    <div class="modal-box">
+      <div class="modal-hdr">
+        <h3>🔑 Ganti PIN Baru</h3>
+        <button class="modal-close" onclick="closeModal('modal-newpin')">✕</button>
+      </div>
+      <p class="pin-hint" id="np-hint">Masukkan PIN baru (6 digit)</p>
+      <div class="pin-dots" id="np-dots">
+        <div class="pin-dot" id="np0"></div>
+        <div class="pin-dot" id="np1"></div>
+        <div class="pin-dot" id="np2"></div>
+        <div class="pin-dot" id="np3"></div>
+        <div class="pin-dot" id="np4"></div>
+        <div class="pin-dot" id="np5"></div>
+      </div>
+      <div class="pin-pad small">
+        <button class="pkey" onclick="npPress('1')">1</button>
+        <button class="pkey" onclick="npPress('2')">2</button>
+        <button class="pkey" onclick="npPress('3')">3</button>
+        <button class="pkey" onclick="npPress('4')">4</button>
+        <button class="pkey" onclick="npPress('5')">5</button>
+        <button class="pkey" onclick="npPress('6')">6</button>
+        <button class="pkey" onclick="npPress('7')">7</button>
+        <button class="pkey" onclick="npPress('8')">8</button>
+        <button class="pkey" onclick="npPress('9')">9</button>
+        <button class="pkey ghost"></button>
+        <button class="pkey" onclick="npPress('0')">0</button>
+        <button class="pkey del-key" onclick="npDel()">⌫</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Alarm Popup -->
+  <div id="alarm-popup" class="alarm-popup hidden">
+    <div class="alarm-box">
+      <div class="alarm-anim">⏰</div>
+      <h3 id="alarm-title">Pengingat! 🌸</h3>
+      <p id="alarm-msg"></p>
+      <button class="alarm-dismiss" onclick="dismissAlarm()">✅ Oke, Mengerti!</button>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="app.js"></script>
+
+  <!-- ═══ PWA Service Worker Registration ═══ -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', async () => {
+        try {
+          const reg = await navigator.serviceWorker.register('./sw.js', { scope: './' });
+          console.log('✅ Service Worker terdaftar:', reg.scope);
+
+          // Cek update SW
+          reg.addEventListener('updatefound', () => {
+            const newSW = reg.installing;
+            newSW.addEventListener('statechange', () => {
+              if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
+                // Ada versi baru — beri tahu user
+                const update = confirm('🌸 Versi baru tersedia! Muat ulang sekarang?');
+                if (update) {
+                  newSW.postMessage('SKIP_WAITING');
+                  window.location.reload();
+                }
+              }
+            });
+          });
+        } catch (err) {
+          console.warn('❌ Service Worker gagal:', err);
+        }
+      });
+    }
+  </script>
+</body>
+</html>
