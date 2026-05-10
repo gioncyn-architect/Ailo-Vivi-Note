@@ -2,58 +2,58 @@
   "name": "Ailo Vivi Note",
   "short_name": "ViviNote",
   "description": "Aplikasi catatan pribadi AI dengan tema kawaii 🌸",
-  "start_url": "./index.html",
+  "start_url": "/Ailo-Vivi-Note/index.html",
+  "scope": "/Ailo-Vivi-Note/",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#FFF0F5",
   "theme_color": "#FF69B4",
   "lang": "id",
-  "scope": "./",
   "icons": [
     {
-      "src": "icons/icon-72.png",
+      "src": "/Ailo-Vivi-Note/icons/icon-72.png",
       "sizes": "72x72",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "icons/icon-96.png",
+      "src": "/Ailo-Vivi-Note/icons/icon-96.png",
       "sizes": "96x96",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "icons/icon-128.png",
+      "src": "/Ailo-Vivi-Note/icons/icon-128.png",
       "sizes": "128x128",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "icons/icon-144.png",
+      "src": "/Ailo-Vivi-Note/icons/icon-144.png",
       "sizes": "144x144",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "icons/icon-152.png",
+      "src": "/Ailo-Vivi-Note/icons/icon-152.png",
       "sizes": "152x152",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "icons/icon-192.png",
+      "src": "/Ailo-Vivi-Note/icons/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "icons/icon-384.png",
+      "src": "/Ailo-Vivi-Note/icons/icon-384.png",
       "sizes": "384x384",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "icons/icon-512.png",
+      "src": "/Ailo-Vivi-Note/icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
@@ -61,7 +61,7 @@
   ],
   "screenshots": [
     {
-      "src": "icons/screenshot-mobile.png",
+      "src": "/Ailo-Vivi-Note/icons/screenshot-mobile.png",
       "sizes": "390x844",
       "type": "image/png",
       "form_factor": "narrow"
@@ -73,15 +73,15 @@
       "name": "Tambah Jadwal",
       "short_name": "Jadwal",
       "description": "Tambah jadwal baru",
-      "url": "./index.html#home",
-      "icons": [{ "src": "icons/icon-96.png", "sizes": "96x96" }]
+      "url": "/Ailo-Vivi-Note/index.html#home",
+      "icons": [{ "src": "/Ailo-Vivi-Note/icons/icon-96.png", "sizes": "96x96" }]
     },
     {
       "name": "Catat Keuangan",
       "short_name": "Keuangan",
       "description": "Tambah transaksi baru",
-      "url": "./index.html#finance",
-      "icons": [{ "src": "icons/icon-96.png", "sizes": "96x96" }]
+      "url": "/Ailo-Vivi-Note/index.html#finance",
+      "icons": [{ "src": "/Ailo-Vivi-Note/icons/icon-96.png", "sizes": "96x96" }]
     }
   ]
 }
