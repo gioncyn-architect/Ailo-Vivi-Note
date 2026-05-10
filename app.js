@@ -5,192 +5,15 @@
 
 'use strict';
 
-/* ════════════════════════════════════════
-   DATA STORE — IndexedDB (utama) + localStorage (fallback)
-════════════════════════════════════════ */
-
-/* ── IndexedDB setup ── */
-let _idb = null;
-const IDB_NAME    = 'AiloViviNote';
-const IDB_VERSION = 1;
-const IDB_STORE   = 'kv';
-
-function openIDB() {
-  return new Promise((resolve, reject) => {
-    if (_idb) { resolve(_idb); return; }
-    const req = indexedDB.open(IDB_NAME, IDB_VERSION);
-    req.onupgradeneeded = e => {
-      const db = e.target.result;
-      if (!db.objectStoreNames.contains(IDB_STORE)) {
-        db.createObjectStore(IDB_STORE, { keyPath: 'k' });
-      }
-    };
-    req.onsuccess = e => { _idb = e.target.result; resolve(_idb); };
-    req.onerror   = () => reject(req.error);
-  });
-}
-
-/* ── Async IDB helpers ── */
-async function idbSet(k, v) {
-  try {
-    const db = await openIDB();
-    return new Promise((res, rej) => {
-      const tx = db.transaction(IDB_STORE, 'readwrite');
-      tx.objectStore(IDB_STORE).put({ k, v });
-      tx.oncomplete = () => res(true);
-      tx.onerror    = () => rej(tx.error);
-    });
-  } catch { return false; }
-}
-
-async function idbGet(k) {
-  try {
-    const db = await openIDB();
-    return new Promise((res, rej) => {
-      const tx  = db.transaction(IDB_STORE, 'readonly');
-      const req = tx.objectStore(IDB_STORE).get(k);
-      req.onsuccess = () => res(req.result ? req.result.v : undefined);
-      req.onerror   = () => rej(req.error);
-    });
-  } catch { return undefined; }
-}
-
-async function idbDel(k) {
-  try {
-    const db = await openIDB();
-    return new Promise((res, rej) => {
-      const tx = db.transaction(IDB_STORE, 'readwrite');
-      tx.objectStore(IDB_STORE).delete(k);
-      tx.oncomplete = () => res(true);
-      tx.onerror    = () => rej(tx.error);
-    });
-  } catch { return false; }
-}
-
-async function idbGetAll() {
-  try {
-    const db = await openIDB();
-    return new Promise((res, rej) => {
-      const tx  = db.transaction(IDB_STORE, 'readonly');
-      const req = tx.objectStore(IDB_STORE).getAll();
-      req.onsuccess = () => res(req.result || []);
-      req.onerror   = () => rej(req.error);
-    });
-  } catch { return []; }
-}
-
-/* ── Sinkronisasi: salin localStorage lama → IndexedDB ── */
-async function migrateFromLocalStorage() {
-  const keys = [];
-  for (let i = 0; i < localStorage.length; i++) {
-    const k = localStorage.key(i);
-    if (k && k.startsWith('avn_')) keys.push(k.slice(4));
-  }
-  for (const k of keys) {
-    const existing = await idbGet(k);
-    if (existing === undefined) {
-      try {
-        const raw = localStorage.getItem('avn_' + k);
-        if (raw) await idbSet(k, JSON.parse(raw));
-      } catch {}
-    }
-  }
-}
-
-/* ── DB — tulis ke IDB + localStorage sekaligus ── */
+/* ════ DATA STORE ════ */
 const DB = {
   get: (k, def = null) => {
-    // Sync read dari localStorage (IDB async, dipakai lewat DBAsync)
-    try {
-      const v = localStorage.getItem('avn_' + k);
-      return v ? JSON.parse(v) : def;
-    } catch { return def; }
+    try { const v = localStorage.getItem('avn_' + k); return v ? JSON.parse(v) : def; }
+    catch { return def; }
   },
-  set: (k, v) => {
-    // Tulis ke localStorage (sync, langsung)
-    try { localStorage.setItem('avn_' + k, JSON.stringify(v)); } catch {}
-    // Tulis ke IndexedDB (async, fire-and-forget)
-    idbSet(k, v).catch(() => {});
-  },
-  del: (k) => {
-    localStorage.removeItem('avn_' + k);
-    idbDel(k).catch(() => {});
-  }
+  set: (k, v) => { try { localStorage.setItem('avn_' + k, JSON.stringify(v)); } catch {} },
+  del: (k) => { localStorage.removeItem('avn_' + k); }
 };
-
-/* ── Restore dari IndexedDB → localStorage (dipanggil saat app load) ── */
-async function restoreFromIDB() {
-  try {
-    const all = await idbGetAll();
-    for (const { k, v } of all) {
-      // Hanya restore kalau localStorage kosong untuk key ini
-      if (!localStorage.getItem('avn_' + k)) {
-        localStorage.setItem('avn_' + k, JSON.stringify(v));
-      }
-    }
-  } catch {}
-}
-
-/* ════════════════════════════════════════
-   EXPORT / IMPORT BACKUP DATA
-════════════════════════════════════════ */
-const BACKUP_KEYS = ['schedules', 'plans', 'notes', 'transactions', 'categories'];
-
-function exportData() {
-  const backup = {
-    _app:      'AiloViviNote',
-    _version:  1,
-    _exported: new Date().toISOString(),
-  };
-  BACKUP_KEYS.forEach(k => {
-    backup[k] = DB.get(k, []);
-  });
-
-  const json = JSON.stringify(backup, null, 2);
-  const blob = new Blob([json], { type: 'application/json' });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  const date = new Date().toISOString().slice(0, 10);
-  a.href     = url;
-  a.download = `AiloViviNote_backup_${date}.json`;
-  a.click();
-  URL.revokeObjectURL(url);
-  showToast('📦 Backup berhasil diunduh!');
-}
-
-function importData() {
-  const input = document.createElement('input');
-  input.type   = 'file';
-  input.accept = '.json';
-  input.onchange = async e => {
-    const file = e.target.files[0];
-    if (!file) return;
-    try {
-      const text   = await file.text();
-      const backup = JSON.parse(text);
-      if (backup._app !== 'AiloViviNote') {
-        showToast('❌ File backup tidak valid!'); return;
-      }
-      if (!confirm(`📦 Import data dari backup ${backup._exported?.slice(0,10) || '?'}?\nData saat ini TIDAK akan dihapus, data backup akan digabungkan.`)) return;
-
-      BACKUP_KEYS.forEach(k => {
-        if (!Array.isArray(backup[k])) return;
-        const existing = DB.get(k, []);
-        // Gabungkan, hindari duplikat berdasarkan id
-        const existingIds = new Set(existing.map(x => x.id));
-        const merged = [...existing, ...backup[k].filter(x => !existingIds.has(x.id))];
-        DB.set(k, merged);
-      });
-
-      showToast('✅ Data berhasil diimport! 🎉');
-      loadHome(); loadFinance(); loadPlans();
-      renderCategoryList(); populateCatSelect();
-    } catch (err) {
-      showToast('❌ Gagal import: file rusak atau bukan JSON valid');
-    }
-  };
-  input.click();
-}
 
 /* ════ DEFAULT CATEGORIES ════ */
 const DEFAULT_CATEGORIES = [
@@ -237,9 +60,9 @@ function addCategory() {
 
 function deleteCategory(id) {
   const cats = getCategories();
-  if (cats.length <= 1) { showToast('⚠️ Minimal harus ada 1 kategori!'); return; }
-  const cat = cats.find(c => c.id === id);
+  const cat  = cats.find(c => c.id === id);
   if (!cat) return;
+  if (cat.isDefault) { showToast('⚠️ Kategori bawaan tidak bisa dihapus'); return; }
   if (!confirm(`Hapus kategori "${cat.name}"?`)) return;
   DB.set('categories', cats.filter(c => c.id !== id));
   renderCategoryList();
@@ -256,7 +79,10 @@ function renderCategoryList() {
     <div class="cat-item">
       <span class="cat-item-emoji">${c.emoji}</span>
       <span class="cat-item-name">${c.name}</span>
-      <button class="cat-del-btn" onclick="deleteCategory('${c.id}')" title="Hapus">🗑️</button>
+      ${c.isDefault
+        ? '<span class="cat-default-badge">bawaan</span>'
+        : `<button class="cat-del-btn" onclick="deleteCategory('${c.id}')">🗑️</button>`
+      }
     </div>
   `).join('');
 }
@@ -449,9 +275,7 @@ async function doRegisterFP() {
   }
 }
 
-async function enterApp() {
-  await restoreFromIDB();
-  await migrateFromLocalStorage();
+function enterApp() {
   document.getElementById('login-screen').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
   pinBuffer = '';
@@ -471,28 +295,16 @@ function doLogout() {
 /* ════════════════════════════════════════
    NAVIGATION
 ════════════════════════════════════════ */
-const PAGE_IDS = { home: 'page-home', plans: 'page-plans', finance: 'page-finance', ai: 'page-ai' };
-const NAV_IDS  = { home: 'bn-home', plans: 'bn-plans', finance: 'bn-finance', ai: 'bn-ai' };
+const PAGE_IDS = { home: 'page-home', plans: 'page-plans', finance: 'page-finance', ai: 'page-ai', settings: 'page-settings' };
+const NAV_IDS  = { home: 'bn-home', plans: 'bn-plans', finance: 'bn-finance', ai: 'bn-ai', settings: 'bn-settings' };
 let currentPage = 'home';
 
 function navigateTo(page) {
-  if (page === 'settings') { openSidebar(); return; }
-
-  Object.values(PAGE_IDS).forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.classList.remove('active');
-  });
-  Object.values(NAV_IDS).forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.classList.remove('active');
-  });
-
-  const pageEl = document.getElementById(PAGE_IDS[page]);
-  const navEl  = document.getElementById(NAV_IDS[page]);
-  if (pageEl) pageEl.classList.add('active');
-  if (navEl)  navEl.classList.add('active');
+  Object.values(PAGE_IDS).forEach(id => document.getElementById(id).classList.remove('active'));
+  Object.values(NAV_IDS).forEach(id => document.getElementById(id).classList.remove('active'));
+  document.getElementById(PAGE_IDS[page]).classList.add('active');
+  document.getElementById(NAV_IDS[page]).classList.add('active');
   currentPage = page;
-
   if (page === 'home')    loadHome();
   if (page === 'plans')   loadPlans();
   if (page === 'finance') loadFinance();
@@ -503,33 +315,16 @@ function navigateTo(page) {
    APP INIT
 ════════════════════════════════════════ */
 function initApp() {
-  // Set halaman & nav home aktif dulu
-  Object.values(PAGE_IDS).forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.classList.remove('active');
-  });
-  Object.values(NAV_IDS).forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.classList.remove('active');
-  });
-  const homeEl = document.getElementById('page-home');
-  const homeNav = document.getElementById('bn-home');
-  if (homeEl)  homeEl.classList.add('active');
-  if (homeNav) homeNav.classList.add('active');
-  currentPage = 'home';
-
-  // Init semua
   setHeroDate();
   initEmojiPicker();
   renderCalendar();
-  setDefaultDates();
-  populateCatSelect();
   loadHome();
   loadFinance();
+  populateCatSelect();
+  setDefaultDates();
   startAlarmWatcher();
-
-  const fpBtn = document.getElementById('fp-btn');
-  if (fpBtn) fpBtn.style.display = DB.get('fp_cred_id') ? 'flex' : 'none';
+  if (DB.get('fp_cred_id')) document.getElementById('fp-btn').style.display = 'flex';
+  else document.getElementById('fp-btn').style.display = 'none';
 }
 
 function setHeroDate() {
@@ -905,38 +700,6 @@ function appendChatMsg(role, content, isTyping = false) {
   return div;
 }
 
-
-/* ════ KONTEKS DATA USER UNTUK AI ════ */
-function getUserDataContext() {
-  const today       = todayStr();
-  const schedules   = DB.get('schedules', []);
-  const plans       = DB.get('plans', []);
-  const notes       = DB.get('notes', []);
-  const transactions= DB.get('transactions', []);
-
-  const schedTxt = schedules.length
-    ? schedules.map(s => `- ${s.emoji} ${s.title} (jam ${s.time||'-'}, ${s.repeat}, alarm:${s.alarm?'ya':'tidak'}, selesai:${s.doneToday?'ya':'belum'})`).join('\n')
-    : 'Tidak ada jadwal.';
-
-  const sortedPlans = [...plans].sort((a,b) => a.date.localeCompare(b.date));
-  const planTxt = sortedPlans.length
-    ? sortedPlans.map(p => `- [${p.date}${p.date===today?' (HARI INI)':''}] ${p.title}${p.time?' jam '+p.time:''}${p.note?' — '+p.note:''}`).join('\n')
-    : 'Tidak ada rencana.';
-
-  const noteTxt = notes.length
-    ? notes.map(n => `- [${n.title}]: ${n.content.slice(0,300)}`).join('\n')
-    : 'Tidak ada catatan.';
-
-  const totalIn  = transactions.filter(t=>t.type==='income').reduce((a,t)=>a+t.amount,0);
-  const totalOut = transactions.filter(t=>t.type==='expense').reduce((a,t)=>a+t.amount,0);
-  const recentTx = [...transactions].sort((a,b)=>b.createdAt-a.createdAt).slice(0,10);
-  const txTxt = recentTx.length
-    ? recentTx.map(t => `- [${t.date}] ${t.type==='income'?'+':'-'} Rp${t.amount.toLocaleString('id-ID')} | ${t.category} | ${t.desc||'-'}`).join('\n')
-    : 'Tidak ada transaksi.';
-
-  return `\n=== DATA PRIBADI USER (HARI INI: ${today}) ===\n\n📋 JADWAL HARIAN (${schedules.length}):\n${schedTxt}\n\n📅 RENCANA (${plans.length}):\n${planTxt}\n\n📝 CATATAN (${notes.length}):\n${noteTxt}\n\n💰 KEUANGAN:\nSaldo: Rp${(totalIn-totalOut).toLocaleString('id-ID')} | Masuk: Rp${totalIn.toLocaleString('id-ID')} | Keluar: Rp${totalOut.toLocaleString('id-ID')}\nTransaksi terakhir:\n${txTxt}\n=== AKHIR DATA ===\n`;
-}
-
 async function sendMsg() {
   const inp  = document.getElementById('chat-in');
   const text = inp.value.trim();
@@ -966,12 +729,11 @@ async function sendMsg() {
 }
 
 async function callGroq(key, history) {
-  const sysContent = `Kamu adalah Vivi, asisten AI pribadi yang sangat cerdas dan membantu. Kamu punya akses penuh ke semua data user: jadwal, rencana, catatan, dan keuangan. WAJIB gunakan data ini untuk menjawab secara spesifik. Jangan bilang tidak bisa lihat data. Jawab dalam bahasa Indonesia santai dengan emoji secukupnya.` + getUserDataContext();
-  const systemMsg = { role: 'system', content: sysContent };
+  const systemMsg = { role: 'system', content: 'Kamu adalah Vivi, asisten pribadi yang lucu, ramah, dan suka menggunakan emoji. Kamu membantu pengguna dengan catatan, jadwal, rencana, dan keuangan mereka. Respond dalam bahasa Indonesia yang santai.' };
   const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
-    body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [systemMsg, ...history], max_tokens: 1500, temperature: 0.7 })
+    body: JSON.stringify({ model: 'llama-3.1-8b-instant', messages: [systemMsg, ...history], max_tokens: 800, temperature: 0.8 })
   });
   if (!res.ok) { const e = await res.json(); throw new Error(e.error?.message || 'Groq API error'); }
   const data = await res.json();
@@ -979,12 +741,11 @@ async function callGroq(key, history) {
 }
 
 async function callMistral(key, history) {
-  const sysContent = `Kamu adalah Vivi, asisten AI pribadi yang sangat cerdas dan membantu. Kamu punya akses penuh ke semua data user: jadwal, rencana, catatan, dan keuangan. WAJIB gunakan data ini untuk menjawab secara spesifik. Jawab dalam bahasa Indonesia santai dengan emoji secukupnya.` + getUserDataContext();
-  const systemMsg = { role: 'system', content: sysContent };
+  const systemMsg = { role: 'system', content: 'Kamu adalah Vivi, asisten pribadi yang lucu, ramah, dan suka emoji. Bantu pengguna dengan catatan, jadwal, dan keuangan. Respond dalam bahasa Indonesia.' };
   const res = await fetch('https://api.mistral.ai/v1/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
-    body: JSON.stringify({ model: 'mistral-small-latest', messages: [systemMsg, ...history], max_tokens: 1500, temperature: 0.7 })
+    body: JSON.stringify({ model: 'mistral-small-latest', messages: [systemMsg, ...history], max_tokens: 800, temperature: 0.8 })
   });
   if (!res.ok) { const e = await res.json(); throw new Error(e.message || 'Mistral API error'); }
   const data = await res.json();
@@ -993,13 +754,13 @@ async function callMistral(key, history) {
 
 async function callCohere(key, history) {
   const msgs = [
-    { role: 'system', content: `Kamu adalah Vivi, asisten AI pribadi yang sangat cerdas dan membantu. Kamu punya akses penuh ke semua data user: jadwal, rencana, catatan, dan keuangan. WAJIB gunakan data ini untuk menjawab secara spesifik. Jawab dalam bahasa Indonesia santai dengan emoji secukupnya.` + getUserDataContext() },
+    { role: 'system', content: 'Kamu adalah Vivi, asisten pribadi yang lucu, ramah, dan suka emoji 🌸. Bantu pengguna dengan catatan, jadwal, rencana, dan keuangan. Respond dalam bahasa Indonesia yang santai dan menyenangkan.' },
     ...history
   ];
   const res = await fetch('https://api.cohere.com/v2/chat', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key, 'X-Client-Name': 'AiloViviNote' },
-    body: JSON.stringify({ model: 'command-r-plus-08-2024', messages: msgs, max_tokens: 1500 })
+    body: JSON.stringify({ model: 'command-r-plus-08-2024', messages: msgs, max_tokens: 800 })
   });
   if (!res.ok) { const e = await res.json(); throw new Error(e.message || 'Cohere API error'); }
   const data = await res.json();
@@ -1035,20 +796,12 @@ function saveApiKey(prov) {
   checkAIKey();
 }
 
-async function clearAllData() {
+function clearAllData() {
   if (!confirm('⚠️ Yakin hapus SEMUA data? Ini tidak bisa dibatalkan!')) return;
   if (!confirm('🚨 Ini akan menghapus semua jadwal, rencana, catatan, dan keuangan. Lanjutkan?')) return;
   const pin = DB.get('pin_hash');
   const fp  = DB.get('fp_cred_id');
-  // Hapus localStorage
   localStorage.clear();
-  // Hapus IndexedDB
-  try {
-    const db  = await openIDB();
-    const tx  = db.transaction(IDB_STORE, 'readwrite');
-    tx.objectStore(IDB_STORE).clear();
-  } catch {}
-  // Restore PIN & fingerprint
   if (pin) DB.set('pin_hash', pin);
   if (fp)  DB.set('fp_cred_id', fp);
   showToast('🗑️ Semua data berhasil dihapus');
@@ -1143,16 +896,10 @@ function speakAlarm(text) {
 /* ════════════════════════════════════════
    INIT ON PAGE LOAD
 ════════════════════════════════════════ */
-document.addEventListener('DOMContentLoaded', async () => {
-
-  // ── 1. Restore data dari IndexedDB → localStorage (jika localStorage kosong) ──
-  await restoreFromIDB();
-  // ── 2. Migrasi data localStorage lama → IndexedDB (sekali saja) ──
-  await migrateFromLocalStorage();
-
-  // ── 3. Cek PIN & fingerprint ──
+document.addEventListener('DOMContentLoaded', () => {
   const hasPin = DB.get('pin_hash');
   if (!hasPin) document.getElementById('pin-hint').textContent = '🌸 Buat PIN baru kamu (6 digit)';
+
   if (DB.get('fp_cred_id')) document.getElementById('fp-btn').style.display = 'flex';
   else document.getElementById('fp-btn').style.display = 'none';
 
@@ -1161,7 +908,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.speechSynthesis.onvoiceschanged = () => {};
   }
 
-  // ── 4. Expose ke global scope ──
+  // Expose to global scope for HTML onclick
   window.pinPress         = pinPress;
   window.pinDel           = pinDel;
   window.doFingerprint    = doFingerprint;
@@ -1195,6 +942,4 @@ document.addEventListener('DOMContentLoaded', async () => {
   window.closeSidebar     = closeSidebar;
   window.addCategory      = addCategory;
   window.deleteCategory   = deleteCategory;
-  window.exportData       = exportData;
-  window.importData       = importData;
 });
